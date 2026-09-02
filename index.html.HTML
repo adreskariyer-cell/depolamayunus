@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARAN YAPI A.Ş - Haftalık Muhasebe Takip Sistemi</title>
+    <!-- Excel indirme kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e293b;
+            --secondary: #0f172a;
+            --accent: #2563eb;
+            --border: #cbd5e1;
+            --bg-light: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: #1e293b;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Control Panel */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .date-picker-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .date-picker-group label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input[type="date"], select, input[type="search"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .filter-group input {
+            flex: 1;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save { background: #16a34a; color: white; }
+        .btn-save:hover { background: #15803d; }
+
+        .btn-excel { background: #0d9488; color: white; }
+        .btn-excel:hover { background: #0f766e; }
+
+        .btn-email { background: #d97706; color: white; }
+        .btn-email:hover { background: #b45309; }
+
+        .btn-print { background: var(--accent); color: white; }
+        .btn-print:hover { background: #1d4ed8; }
+
+        .btn-reset { background: #dc2626; color: white; }
+        .btn-reset:hover { background: #b91c1c; }
+
+        /* Document Header */
+        .doc-header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .doc-header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .doc-header p {
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .header-meta {
+            text-align: right;
+        }
+
+        .selected-date-badge {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .last-updated-badge {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 12px;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8fafc;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: left;
+        }
+
+        .section-row td {
+            background-color: #f1f5f9;
+            font-weight: bold;
+        }
+
+        .col-no { width: 45px; text-align: center; font-weight: bold; }
+        .col-opt { width: 85px; text-align: center; }
+        .col-notes { width: 180px; }
+
+        input[type="radio"] {
+            cursor: pointer;
+            width: 15px;
+            height: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            border: none;
+            padding: 4px;
+            font-size: 11px;
+            background: transparent;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            background: #eff6ff;
+        }
+
+        .info-note {
+            border: 1px solid #000;
+            padding: 8px 12px;
+            font-size: 11px;
+            line-height: 1.4;
+            text-align: justify;
+        }
+
+        /* Signature Area (Print only by default display) */
+        .signature-area {
+            display: none;
+            margin-top: 30px;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .signature-box {
+            text-align: center;
+            width: 200px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Print / PDF Styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .controls {
+                display: none !important;
+            }
+
+            input[type="text"] {
+                border: none !important;
+            }
+
+            .selected-date-badge {
+                color: #000;
+            }
+
+            tr.hidden-row {
+                display: table-row !important;
+            }
+
+            .signature-area {
+                display: flex !important;
+            }
+
+            @page {
+                size: A4;
+                margin: 12mm 10mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Kontrol Paneli -->
+    <div class="controls">
+        <div class="date-picker-group">
+            <label for="checkDate">Tarih Seçin:</label>
+            <input type="date" id="checkDate" onchange="loadData()">
+            
+            <label for="archiveSelect" style="margin-left: 10px;">Geçmiş Arşiv:</label>
+            <select id="archiveSelect" onchange="loadFromArchive(this.value)">
+                <option value="">-- Kayıtlı Haftalar --</option>
+            </select>
+        </div>
+        <div class="btn-group">
+            <button class="btn-save" onclick="saveData(true)">💾 Kaydet</button>
+            <button class="btn-excel" onclick="exportToExcel()">📊 Excel İndir</button>
+            <button class="btn-email" onclick="sendEmailReport()">✉️ E-Posta Gönder</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Yazdır / PDF İndir</button>
+            <button class="btn-reset" onclick="clearCurrentWeek()">🗑️ Haftayı Temizle</button>
+        </div>
+
+        <div class="filter-group">
+            <input type="search" id="searchInput" placeholder="Maddelerde veya notlarda ara..." oninput="filterTable()">
+            <select id="statusFilter" onchange="filterTable()">
+                <option value="all">Tüm Durumlar</option>
+                <option value="yapildi">Sadece Yapıldı</option>
+                <option value="yapilmadi">Sadece Yapılmadı</option>
+                <option value="not_var">Not Eklenenler</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Doküman Başlığı -->
+    <div class="doc-header">
+        <div>
+            <h1>KARAN YAPI A.Ş MUHASEBE ÇALIŞMASI</h1>
+            <p>İnşaat Projeleri Süreç ve Kontrol Takip Çizelgesi</p>
+        </div>
+        <div class="header-meta">
+            <div class="selected-date-badge" id="displayDateText">Hafta: --</div>
+            <div class="last-updated-badge" id="lastUpdatedText">Son Güncelleme: --</div>
+        </div>
+    </div>
+
+    <!-- Takip Tablosu -->
+    <form id="checklistForm">
+        <table id="checklistTable">
+            <thead>
+                <tr>
+                    <th class="col-no">No</th>
+                    <th>Ana Başlık / İşlem Maddesi</th>
+                    <th class="col-opt">Yapıldı</th>
+                    <th class="col-opt">Yapılmadı</th>
+                    <th class="col-notes">Notlar / Açıklama</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- KATEGORİ 1 -->
+                <tr class="section-row">
+                    <td class="col-no">1</td>
+                    <td colspan="4">CARİ HESAP VE TAŞERON TAKİBİ</td>
+                </tr>
+                <tr>
+                    <td class="col-no">1.1</td>
+                    <td>Tedarikçi ve Satıcı Hesapları</td>
+                    <td class="col-opt"><input type="radio" name="item_1_1" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_1_1" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_1_1" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">1.2</td>
+                    <td>Taşeron (Alt Yüklenici) Hakedişleri</td>
+                    <td class="col-opt"><input type="radio" name="item_1_2" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_1_2" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_1_2" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">1.3</td>
+                    <td>Müşteri ve Daire Satış Takibi</td>
+                    <td class="col-opt"><input type="radio" name="item_1_3" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_1_3" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_1_3" placeholder="Not ekleyin..."></td>
+                </tr>
+
+                <!-- KATEGORİ 2 -->
+                <tr class="section-row">
+                    <td class="col-no">2</td>
+                    <td colspan="4">BELGE, FATURA VE İRSALİYE İŞLEMLERİ</td>
+                </tr>
+                <tr>
+                    <td class="col-no">2.1</td>
+                    <td>İrsaliye ve Fatura Eşleştirme</td>
+                    <td class="col-opt"><input type="radio" name="item_2_1" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_2_1" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_2_1" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">2.2</td>
+                    <td>Gelen / Giden Fatura Kayıtları</td>
+                    <td class="col-opt"><input type="radio" name="item_2_2" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_2_2" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_2_2" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">2.3</td>
+                    <td>KDV ve Tevkifat Takibi</td>
+                    <td class="col-opt"><input type="radio" name="item_2_3" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_2_3" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_2_3" placeholder="Not ekleyin..."></td>
+                </tr>
+
+                <!-- KATEGORİ 3 -->
+                <tr class="section-row">
+                    <td class="col-no">3</td>
+                    <td colspan="4">KASA, BANKA VE FİNANSAL HAREKETLER</td>
+                </tr>
+                <tr>
+                    <td class="col-no">3.1</td>
+                    <td>Günlük Kasa Takibi</td>
+                    <td class="col-opt"><input type="radio" name="item_3_1" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_3_1" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_3_1" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">3.2</td>
+                    <td>Banka Hareketleri</td>
+                    <td class="col-opt"><input type="radio" name="item_3_2" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_3_2" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_3_2" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">3.3</td>
+                    <td>Çek ve Senet Portföyü</td>
+                    <td class="col-opt"><input type="radio" name="item_3_3" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_3_3" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_3_3" placeholder="Not ekleyin..."></td>
+                </tr>
+
+                <!-- KATEGORİ 4 -->
+                <tr class="section-row">
+                    <td class="col-no">4</td>
+                    <td colspan="4">PERSONEL VE ŞANTİYE İŞÇİLİK TAKİBİ</td>
+                </tr>
+                <tr>
+                    <td class="col-no">4.1</td>
+                    <td>Puantaj Kontrolü</td>
+                    <td class="col-opt"><input type="radio" name="item_4_1" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_4_1" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_4_1" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">4.2</td>
+                    <td>Maaş ve Avans Ödemeleri</td>
+                    <td class="col-opt"><input type="radio" name="item_4_2" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_4_2" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_4_2" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">4.3</td>
+                    <td>SGK ve İş Güvenliği Evrakları</td>
+                    <td class="col-opt"><input type="radio" name="item_4_3" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_4_3" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_4_3" placeholder="Not ekleyin..."></td>
+                </tr>
+
+                <!-- KATEGORİ 5 -->
+                <tr class="section-row">
+                    <td class="col-no">5</td>
+                    <td colspan="4">PROJE VE ŞANTİYE BAZLI MALİYET MUHASEBESİ DESTEK İŞLEMLERİ</td>
+                </tr>
+                <tr>
+                    <td class="col-no">5.1</td>
+                    <td>Şantiye Bazlı Gider Dağılımı</td>
+                    <td class="col-opt"><input type="radio" name="item_5_1" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_5_1" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_5_1" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">5.2</td>
+                    <td>Maliyet Analizi Raporlaması</td>
+                    <td class="col-opt"><input type="radio" name="item_5_2" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_5_2" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_5_2" placeholder="Not ekleyin..."></td>
+                </tr>
+
+                <!-- KATEGORİ 6 -->
+                <tr class="section-row">
+                    <td class="col-no">6</td>
+                    <td colspan="4">PERİYODİK MUTABAKATLAR</td>
+                </tr>
+                <tr>
+                    <td class="col-no">6.1</td>
+                    <td>Cari Mutabakatlar</td>
+                    <td class="col-opt"><input type="radio" name="item_6_1" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_6_1" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_6_1" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">6.2</td>
+                    <td>Banka ve Kasa Mutabakatı</td>
+                    <td class="col-opt"><input type="radio" name="item_6_2" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_6_2" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_6_2" placeholder="Not ekleyin..."></td>
+                </tr>
+                <tr>
+                    <td class="col-no">6.3</td>
+                    <td>Resmi Muhasebeye Veri Aktarımı</td>
+                    <td class="col-opt"><input type="radio" name="item_6_3" value="yapildi"></td>
+                    <td class="col-opt"><input type="radio" name="item_6_3" value="yapilmadi"></td>
+                    <td class="col-notes"><input type="text" id="note_6_3" placeholder="Not ekleyin..."></td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+
+    <div class="info-note">
+        <strong>Not:</strong> Bu çalışma muhasebe çalışmalarının sağlıklı yürütülmesi adına yapılmış taslak bir şablondur. Bir firmanın sağlıklı bir muhasebe yapabilmesi için yukarıdaki bilgilerin tamamı yapılmalıdır.
+    </div>
+
+    <!-- İmza Alanı -->
+    <div class="signature-area">
+        <div class="signature-box">
+            Hazırlayan / Kontrol Eden<br>
+            Muhasebe Departmanı
+        </div>
+        <div class="signature-box">
+            Onaylayan<br>
+            Yönetim
+        </div>
+    </div>
+</div>
+
+<script>
+    const items = [
+        '1_1', '1_2', '1_3',
+        '2_1', '2_2', '2_3',
+        '3_1', '3_2', '3_3',
+        '4_1', '4_2', '4_3',
+        '5_1', '5_2',
+        '6_1', '6_2', '6_3'
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const now = new Date();
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(now.setDate(diff));
+        
+        const mondayStr = monday.toISOString().split('T')[0];
+        document.getElementById('checkDate').value = mondayStr;
+        
+        updateArchiveList();
+        loadData();
+
+        // Otomatik kaydetme dinleyicileri
+        document.getElementById('checklistForm').addEventListener('change', () => saveData(false));
+        document.getElementById('checklistForm').addEventListener('input', () => saveData(false));
+    });
+
+    function getSelectedDate() {
+        return document.getElementById('checkDate').value;
+    }
+
+    function formatDateDisplay(dateStr) {
+        if(!dateStr) return '';
+        const startDate = new Date(dateStr);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+
+        const format = (d) => {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}.${month}.${year}`;
+        };
+
+        return `${format(startDate)} - ${format(endDate)}`;
+    }
+
+    function saveData(showAlert = false) {
+        const date = getSelectedDate();
+        if (!date) {
+            if (showAlert) alert('Lütfen hafta başlangıç tarihini seçin!');
+            return;
+        }
+
+        const data = {};
+        items.forEach(id => {
+            const radios = document.getElementsByName(`item_${id}`);
+            let val = '';
+            radios.forEach(r => { if(r.checked) val = r.value; });
+            
+            const note = document.getElementById(`note_${id}`).value;
+            data[id] = { val, note };
+        });
+
+        const now = new Date();
+        const timeStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        const payload = {
+            lastUpdated: timeStr,
+            items: data
+        };
+
+        localStorage.setItem(`karan_muhasebe_hafta_${date}`, JSON.stringify(payload));
+        document.getElementById('lastUpdatedText').innerText = `Son Güncelleme: ${timeStr}`;
+        updateArchiveList();
+
+        if (showAlert) {
+            alert(`${formatDateDisplay(date)} haftasına ait kayıt başarıyla kaydedildi.`);
+        }
+    }
+
+    function loadData() {
+        const date = getSelectedDate();
+        document.getElementById('displayDateText').innerText = `Hafta: ${formatDateDisplay(date)}`;
+        document.getElementById('archiveSelect').value = date;
+
+        document.getElementById('checklistForm').reset();
+        document.getElementById('lastUpdatedText').innerText = `Son Güncelleme: --`;
+
+        const stored = localStorage.getItem(`karan_muhasebe_hafta_${date}`);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            const data = parsed.items || parsed; // geriye dönük uyumluluk
+            if(parsed.lastUpdated) {
+                document.getElementById('lastUpdatedText').innerText = `Son Güncelleme: ${parsed.lastUpdated}`;
+            }
+
+            items.forEach(id => {
+                if(data[id]) {
+                    if(data[id].val) {
+                        const radio = document.querySelector(`input[name="item_${id}"][value="${data[id].val}"]`);
+                        if(radio) radio.checked = true;
+                    }
+                    if(data[id].note) {
+                        document.getElementById(`note_${id}`).value = data[id].note;
+                    }
+                }
+            });
+        }
+        filterTable();
+    }
+
+    function filterTable() {
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+        const statusVal = document.getElementById('statusFilter').value;
+
+        const rows = document.querySelectorAll('#checklistTable tbody tr');
+        rows.forEach(row => {
+            if (row.classList.contains('section-row')) {
+                row.style.display = '';
+                return;
+            }
+
+            const title = row.cells[1].innerText.toLowerCase();
+            const noteInput = row.cells[4].querySelector('input');
+            const noteText = noteInput ? noteInput.value.toLowerCase() : '';
+            
+            const itemKey = row.cells[0].innerText.replace('.', '_');
+            const radios = document.getElementsByName(`item_${itemKey}`);
+            let status = 'empty';
+            radios.forEach(r => { if(r.checked) status = r.value; });
+
+            let matchesSearch = title.includes(searchText) || noteText.includes(searchText);
+            let matchesStatus = true;
+
+            if (statusVal === 'yapildi') matchesStatus = (status === 'yapildi');
+            if (statusVal === 'yapilmadi') matchesStatus = (status === 'yapilmadi');
+            if (statusVal === 'not_var') matchesStatus = (noteText.trim() !== '');
+
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+                row.classList.remove('hidden-row');
+            } else {
+                row.style.display = 'none';
+                row.classList.add('hidden-row');
+            }
+        });
+    }
+
+    function updateArchiveList() {
+        const select = document.getElementById('archiveSelect');
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">-- Kayıtlı Haftalar --</option>';
+
+        const archiveKeys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('karan_muhasebe_hafta_')) {
+                archiveKeys.push(key.replace('karan_muhasebe_hafta_', ''));
+            }
+        }
+
+        archiveKeys.sort().reverse().forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = formatDateDisplay(date);
+            select.appendChild(option);
+        });
+
+        select.value = currentValue;
+    }
+
+    function loadFromArchive(dateStr) {
+        if (!dateStr) return;
+        document.getElementById('checkDate').value = dateStr;
+        loadData();
+    }
+
+    function clearCurrentWeek() {
+        const date = getSelectedDate();
+        if(confirm(`${formatDateDisplay(date)} haftasına ait verileri silmek istediğinize emin misiniz?`)) {
+            localStorage.removeItem(`karan_muhasebe_hafta_${date}`);
+            document.getElementById('checklistForm').reset();
+            updateArchiveList();
+            alert('Veriler silindi.');
+        }
+    }
+
+    function sendEmailReport() {
+        const date = getSelectedDate();
+        const dateText = formatDateDisplay(date);
+        
+        let yapildiCount = 0;
+        let yapilmadiCount = 0;
+        let pendingNotes = [];
+
+        items.forEach(id => {
+            const radios = document.getElementsByName(`item_${id}`);
+            let val = '';
+            radios.forEach(r => { if(r.checked) val = r.value; });
+            const note = document.getElementById(`note_${id}`).value;
+
+            if(val === 'yapildi') yapildiCount++;
+            if(val === 'yapilmadi') {
+                yapilmadiCount++;
+                const row = document.querySelector(`input[name="item_${id}"]`).closest('tr');
+                const title = row.cells[1].innerText;
+                pendingNotes.push(`- ${title} ${note ? '(Not: ' + note + ')' : ''}`);
+            }
+        });
+
+        const subject = encodeURIComponent(`KARAN YAPI A.Ş - Muhasebe Haftalık Takip Raporu (${dateText})`);
+        let bodyText = `Merhaba,\n\n${dateText} haftasına ait muhasebe kontrol özet raporu aşağıdadır:\n\n`;
+        bodyText += `Tamamlanan Madde: ${yapildiCount}\n`;
+        bodyText += `Eksik / Yapılmayan Madde: ${yapilmadiCount}\n\n`;
+
+        if(pendingNotes.length > 0) {
+            bodyText += `Yapılmayan / Açıkta Kalan Maddeler:\n` + pendingNotes.join('\n') + `\n\n`;
+        }
+
+        bodyText += `İyi çalışmalar.`;
+
+        window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
+    }
+
+    function exportToExcel() {
+        const date = getSelectedDate();
+        const dateText = formatDateDisplay(date);
+
+        const excelData = [
+            ["KARAN YAPI A.Ş MUHASEBE ÇALIŞMASI"],
+            ["İnşaat Projeleri Süreç ve Kontrol Takip Çizelgesi"],
+            [`Hafta: ${dateText}`],
+            []
+        ];
+
+        const rows = document.querySelectorAll("#checklistTable tbody tr");
+        rows.forEach(row => {
+            if (row.classList.contains('section-row')) {
+                const no = row.cells[0].innerText;
+                const title = row.cells[1].innerText;
+                excelData.push([no, title, "", ""]);
+            } else {
+                const no = row.cells[0].innerText;
+                const title = row.cells[1].innerText;
+                
+                const itemKey = no.replace('.', '_');
+                const radios = document.getElementsByName(`item_${itemKey}`);
+                let status = "Belirtilmedi";
+                radios.forEach(r => {
+                    if (r.checked) status = r.value === 'yapildi' ? 'Yapıldı' : 'Yapılmadı';
+                });
+
+                const note = document.getElementById(`note_${itemKey}`) ? document.getElementById(`note_${itemKey}`).value : "";
+                excelData.push([no, title, status, note]);
+            }
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        ws['!cols'] = [{ wch: 8 }, { wch: 55 }, { wch: 15 }, { wch: 30 }];
+        
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Haftalık Takip");
+        XLSX.writeFile(wb, `Karan_Yapi_Muhasebe_${date}.xlsx`);
+    }
+</script>
+
+</body>
+</html>
